@@ -1,0 +1,18 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Poetry virtualenvs
+.venv/
+
+# Env files
+.env
+
+# Data and logs
+01_data/01_raw/API/logs/*
+01_data/03_processed/combined.csv
+
+# OS-generated files
+.DS_Store
