@@ -7,14 +7,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write   # Erlaubt das Schreiben ins Repository
+  contents: write
 
 jobs:
   fetch_hourly:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
+      
       - name: Set up Python 3.11
         uses: actions/setup-python@v3
         with:
@@ -34,17 +34,16 @@ jobs:
       - name: Fetch Data Hourly
         run: poetry run python src/01_fetch_data.py
 
-      # Dateien commiten (z. B. stündliche CSVs in 01_data/01_raw/API)
-      - name: Configure Git
+      - name: Configure Git (Hourly)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Commit and push changes (Hourly Data)
+      - name: Commit and push changes (Hourly)
         run: |
           git add 01_data/01_raw/API/*.csv
           if git diff --cached --quiet; then
-            echo "No changes to commit."
+            echo "No hourly changes to commit."
           else
             git commit -m "Add hourly data files [skip ci]"
             git push origin HEAD:main
@@ -76,6 +75,23 @@ jobs:
       - name: Combine Daily Data
         run: poetry run python src/03_combine_daily.py
 
+      - name: Configure Git (Daily Combine)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push changes (Daily Combine)
+        run: |
+          git add 01_data/02_intermediate/*.csv
+          if git diff --cached --quiet; then
+            echo "No daily combined changes to commit."
+          else
+            git commit -m "Add daily combined data files [skip ci]"
+            git push origin HEAD:main
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Determine yesterday's date
         run: echo "DATE=$(date -d 'yesterday' '+%y%m%d')" >> $GITHUB_ENV
 
@@ -85,22 +101,13 @@ jobs:
       - name: Append to combined
         run: poetry run python src/04_append_to_combined.py ${{ env.DATE }}
 
-      # Änderungen nach täglichem Combine & Clean committen
-      - name: Configure Git
+      - name: Commit and push changes (Combined CSV)
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Commit and push changes (Daily and Combined Data)
-        run: |
-          # Hier z. B. tagesweise kombinierte Dateien
-          git add 01_data/02_intermediate/*.csv
-          # Und ggf. die aktualisierte combined.csv
           git add 01_data/03_processed/combined.csv
           if git diff --cached --quiet; then
-            echo "No changes to commit."
+            echo "No combined changes to commit."
           else
-            git commit -m "Daily combined and cleaned data [skip ci]"
+            git commit -m "Update combined.csv [skip ci]"
             git push origin HEAD:main
           fi
         env:
