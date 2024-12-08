@@ -1,38 +1,51 @@
 name: DB Workflow
 
 on:
+  # Wöchentliche und tägliche Ausführung: 
   schedule:
-    - cron: "0 * * * *"     # Jede Stunde Daten abrufen
-    - cron: "5 0 * * *"     # Täglich um 00:05 tagesweise kombinieren, bereinigen und anhängen
+    - cron: "0 * * * *"     # Jede volle Stunde
+    - cron: "5 0 * * *"     # Täglich um 00:05
+  # Manuelles Triggern über GitHub UI
   workflow_dispatch:
 
 jobs:
   fetch_hourly:
-    if: "github.event_name == 'schedule'"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Install Poetry
         run: pip install poetry
+      
       - name: Install dependencies
         run: poetry install
+      
       - name: Fetch Data Hourly
         run: poetry run python src/01_fetch_data.py
 
   daily_combine_and_clean:
-    if: "github.event_name == 'schedule'"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      
       - name: Install Poetry
         run: pip install poetry
+      
       - name: Install dependencies
         run: poetry install
+      
+      # Dieser Step kombiniert alle stündlichen Dateien eines Tages
       - name: Combine Daily Data
         run: poetry run python src/03_combine_daily.py
+      
+      # Bestimme das gestrige Datum, um die Tagesdaten dieses Datums zu verarbeiten
       - name: Determine yesterday's date
         run: echo "DATE=$(date -d 'yesterday' '+%y%m%d')" >> $GITHUB_ENV
+      
+      # Bereinige die Daten des gestrigen Tages
       - name: Clean Data
         run: poetry run python src/02_clean_data.py $DATE
+      
+      # Füge die bereinigten Tagesdaten an die combined.csv an
       - name: Append to combined
         run: poetry run python src/04_append_to_combined.py $DATE
