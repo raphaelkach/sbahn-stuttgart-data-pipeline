@@ -1,11 +1,12 @@
 name: DB Workflow
 
 on:
-  # Wöchentliche und tägliche Ausführung: 
+  # Wird jede Stunde ausgeführt
   schedule:
-    - cron: "0 * * * *"     # Jede volle Stunde
-    - cron: "5 0 * * *"     # Täglich um 00:05
-  # Manuelles Triggern über GitHub UI
+    - cron: "0 * * * *"
+    # Wird täglich um 00:05 ausgeführt
+    - cron: "5 0 * * *" 
+  # Ermöglicht manuelles Ausführen via GitHub Actions UI
   workflow_dispatch:
 
 jobs:
@@ -14,12 +15,24 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       
+      # Python 3.11 Setup
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.11'
+      
       - name: Install Poetry
         run: pip install poetry
       
       - name: Install dependencies
         run: poetry install
-      
+
+      # Secrets in .env-Datei schreiben
+      - name: Set environment variables
+        run: |
+          echo "DB_CLIENT_ID=${{ secrets.DB_CLIENT_ID }}" >> .env
+          echo "DB_API_KEY=${{ secrets.DB_API_KEY }}" >> .env
+
       - name: Fetch Data Hourly
         run: poetry run python src/01_fetch_data.py
 
@@ -27,25 +40,37 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+
+      # Python 3.11 Setup
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v3
+        with:
+          python-version: '3.11'
       
       - name: Install Poetry
         run: pip install poetry
       
       - name: Install dependencies
         run: poetry install
-      
-      # Dieser Step kombiniert alle stündlichen Dateien eines Tages
+
+      # Secrets in .env-Datei schreiben
+      - name: Set environment variables
+        run: |
+          echo "DB_CLIENT_ID=${{ secrets.DB_CLIENT_ID }}" >> .env
+          echo "DB_API_KEY=${{ secrets.DB_API_KEY }}" >> .env
+
+      # Tagesweise Kombination
       - name: Combine Daily Data
         run: poetry run python src/03_combine_daily.py
       
-      # Bestimme das gestrige Datum, um die Tagesdaten dieses Datums zu verarbeiten
+      # Gestern's Datum ermitteln
       - name: Determine yesterday's date
         run: echo "DATE=$(date -d 'yesterday' '+%y%m%d')" >> $GITHUB_ENV
       
-      # Bereinige die Daten des gestrigen Tages
+      # Bereinigen der Daten von gestern
       - name: Clean Data
-        run: poetry run python src/02_clean_data.py $DATE
+        run: poetry run python src/02_clean_data.py ${{ env.DATE }}
       
-      # Füge die bereinigten Tagesdaten an die combined.csv an
+      # Anfügen an combined.csv
       - name: Append to combined
-        run: poetry run python src/04_append_to_combined.py $DATE
+        run: poetry run python src/04_append_to_combined.py ${{ env.DATE }}
