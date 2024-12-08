@@ -34,21 +34,13 @@ jobs:
       - name: Fetch Data Hourly
         run: poetry run python src/01_fetch_data.py
 
-<<<<<<< HEAD
       # Dateien commiten (z. B. stündliche CSVs in 01_data/01_raw/API)
-=======
-      # Änderungen im Repo festhalten und committen
->>>>>>> 0446324 (Update workflow)
       - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-<<<<<<< HEAD
       - name: Commit and push changes (Hourly Data)
-=======
-      - name: Commit and push changes
->>>>>>> 0446324 (Update workflow)
         run: |
           git add 01_data/01_raw/API/*.csv
           if git diff --cached --quiet; then
