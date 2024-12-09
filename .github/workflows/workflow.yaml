@@ -2,8 +2,8 @@ name: DB Workflow
 
 on:
   schedule:
-    - cron: "0 * * * *"     # Jede volle Stunde (fetch_hourly)
-    - cron: "5 0 * * *"     # Täglich um 00:05 (daily_combine_and_clean)
+    - cron: "0 * * * *"     # jede volle Stunde (fetch_hourly)
+    - cron: "5 0 * * *"     # täglich um 00:05 (daily_combine_and_clean)
   workflow_dispatch:
 
 permissions:
@@ -31,13 +31,17 @@ jobs:
       - name: Fetch Data Hourly
         run: poetry run python src/01_fetch_data.py
 
+      # Debug: Zeige Files im Ordner, in dem die stündlichen CSVs erwartet werden
+      - name: List API Directory
+        run: ls -lah 01_data/01_raw/API
+
+      # Vor dem Pull committen (um unstaged changes zu sichern)
       - name: Configure Git (Hourly pre-pull)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      # Debug: Zeige Git-Status vor dem Commit
-      - name: Debug Git Status (Hourly)
+      - name: Git Status (Hourly before commit)
         run: git status
 
       - name: Commit changes before pull (Hourly)
@@ -45,13 +49,14 @@ jobs:
           git add .
           git commit -m "Commit hourly changes before pull" || echo "No changes to commit"
 
+      # Jetzt rebase-pull ausführen
       - name: Update local main
         run: git pull --rebase origin main
 
-      # Jetzt nachdem wir auf main aktualisiert haben, nochmal commit/push der relevanten Dateien
-      - name: Debug Git Status (Hourly after rebase)
+      - name: Git Status (Hourly after rebase)
         run: git status
 
+      # Jetzt spezifische Dateien committen und pushen
       - name: Commit and push changes (Hourly)
         run: |
           git add 01_data/01_raw/API/*.csv
@@ -86,12 +91,16 @@ jobs:
       - name: Combine Daily Data
         run: poetry run python src/03_combine_daily.py
 
+      # Debug: Zeige Dateien im Intermediate-Verzeichnis
+      - name: List Intermediate Directory
+        run: ls -lah 01_data/02_intermediate
+
       - name: Configure Git (Daily Combine pre-pull)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Debug Git Status (Daily Combine)
+      - name: Git Status (Daily Combine before commit)
         run: git status
 
       - name: Commit changes before pull (Daily Combine)
@@ -102,7 +111,7 @@ jobs:
       - name: Update local main (Daily Combine)
         run: git pull --rebase origin main
 
-      - name: Debug Git Status (Daily Combine after rebase)
+      - name: Git Status (Daily Combine after rebase)
         run: git status
 
       - name: Commit and push changes (Daily Combine)
@@ -126,12 +135,16 @@ jobs:
       - name: Append to combined
         run: poetry run python src/04_append_to_combined.py ${{ env.DATE }}
 
+      # Debug: Zeige Dateien im Processed-Verzeichnis
+      - name: List Processed Directory
+        run: ls -lah 01_data/03_processed
+
       - name: Configure Git (Combined pre-pull)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-      - name: Debug Git Status (Combined)
+      - name: Git Status (Combined before commit)
         run: git status
 
       - name: Commit changes before pull (Combined)
@@ -142,7 +155,7 @@ jobs:
       - name: Update local main (Combined)
         run: git pull --rebase origin main
 
-      - name: Debug Git Status (Combined after rebase)
+      - name: Git Status (Combined after rebase)
         run: git status
 
       - name: Commit and push changes (Combined CSV)
