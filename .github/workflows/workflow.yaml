@@ -104,21 +104,17 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           poetry run python src/03_combine_daily.py ${{ env.DATE }}
 
-      - name: Daten bereinigen
+      # Direkt nach dem Kombinieren bereinigen und an combined anhängen
+      - name: Daten bereinigen und direkt an combined anhängen
         run: |
           export PATH="$HOME/.local/bin:$PATH"
           poetry run python src/02_clean_data.py ${{ env.DATE }}
-
-      - name: An combined anhängen
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry run python src/04_append_to_combined.py ${{ env.DATE }}
 
       # Änderungen committen und pushen (Daily)
       - name: Änderungen committen und pushen (Daily)
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          commit_message: 'Tägliches Kombinieren und Bereinigen der Daten'
+          commit_message: 'Tägliches Kombinieren und Bereinigen der Daten (direkt an combined angehängt)'
           file_pattern: |
             01_data/02_intermediate/*
             01_data/03_processed/combined.csv
