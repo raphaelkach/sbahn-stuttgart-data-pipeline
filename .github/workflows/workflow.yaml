@@ -2,8 +2,8 @@ name: DB Workflow
 
 on:
   schedule:
-    - cron: "0 * * * *"     # Jede volle Stunde
-    - cron: "5 0 * * *"     # Täglich um 00:05
+    - cron: "0 * * * *"     # Jede volle Stunde Daten holen
+    - cron: "5 0 * * *"     # Täglich um 00:05 kombinieren, bereinigen etc.
   workflow_dispatch:
 
 permissions:
@@ -14,11 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v3
         with:
-          python-version: '3.11'
+          fetch-depth: 0  # Holt den kompletten Verlauf, wichtig für rebase
 
       - name: Install Poetry
         run: pip install poetry
@@ -26,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      - name: Set environment variables from Secrets
+      - name: Set environment variables
         run: |
           echo "DB_CLIENT_ID=${{ secrets.DB_CLIENT_ID }}" >> .env
           echo "DB_API_KEY=${{ secrets.DB_API_KEY }}" >> .env
@@ -34,7 +31,12 @@ jobs:
       - name: Fetch Data Hourly
         run: poetry run python src/01_fetch_data.py
 
-      - name: Configure Git (Hourly)
+      # Vor dem Committen aktualisieren wir die lokale main mit remote main
+      - name: Update local main with remote
+        run: |
+          git pull --rebase origin main
+
+      - name: Configure Git
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
@@ -55,11 +57,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v3
         with:
-          python-version: '3.11'
+          fetch-depth: 0
 
       - name: Install Poetry
         run: pip install poetry
@@ -67,13 +66,18 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      - name: Set environment variables from Secrets
+      - name: Set environment variables
         run: |
           echo "DB_CLIENT_ID=${{ secrets.DB_CLIENT_ID }}" >> .env
           echo "DB_API_KEY=${{ secrets.DB_API_KEY }}" >> .env
 
       - name: Combine Daily Data
         run: poetry run python src/03_combine_daily.py
+
+      # Veränderungen für intermediate-Dateien committen
+      - name: Update local main with remote (Daily Combine)
+        run: |
+          git pull --rebase origin main
 
       - name: Configure Git (Daily Combine)
         run: |
@@ -100,6 +104,16 @@ jobs:
 
       - name: Append to combined
         run: poetry run python src/04_append_to_combined.py ${{ env.DATE }}
+
+      # Änderungen an combined.csv committen
+      - name: Update local main with remote (Combined)
+        run: |
+          git pull --rebase origin main
+
+      - name: Configure Git (Combined)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Commit and push changes (Combined CSV)
         run: |
