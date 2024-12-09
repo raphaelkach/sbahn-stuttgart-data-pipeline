@@ -31,14 +31,19 @@ jobs:
       - name: Fetch Data Hourly
         run: poetry run python src/01_fetch_data.py
 
-      # Update local main and commit/push changes if needed
-      - name: Update local main
-        run: git pull --rebase origin main
-
-      - name: Configure Git
+      # Vor dem Pull committen
+      - name: Configure Git (Hourly pre-pull)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Commit changes before pull (Hourly)
+        run: |
+          git add .
+          git commit -m "Commit hourly changes before pull" || echo "No changes to commit"
+
+      - name: Update local main
+        run: git pull --rebase origin main
 
       - name: Commit and push changes (Hourly)
         run: |
@@ -53,7 +58,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   daily_combine_and_clean:
-    needs: [fetch_hourly]  # Diese Zeile stellt sicher, dass dieser Job erst nach fetch_hourly ausgeführt wird.
+    needs: [fetch_hourly]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -74,13 +79,19 @@ jobs:
       - name: Combine Daily Data
         run: poetry run python src/03_combine_daily.py
 
-      - name: Update local main (Daily Combine)
-        run: git pull --rebase origin main
-
-      - name: Configure Git (Daily Combine)
+      # Vor dem Pull committen (Daily Combine)
+      - name: Configure Git (Daily Combine pre-pull)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit changes before pull (Daily Combine)
+        run: |
+          git add .
+          git commit -m "Commit daily combined data changes before pull" || echo "No changes to commit"
+
+      - name: Update local main (Daily Combine)
+        run: git pull --rebase origin main
 
       - name: Commit and push changes (Daily Combine)
         run: |
@@ -103,6 +114,17 @@ jobs:
       - name: Append to combined
         run: poetry run python src/04_append_to_combined.py ${{ env.DATE }}
 
+      # Vor dem nächsten Pull (Combined) committen
+      - name: Configure Git (Combined pre-pull)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit changes before pull (Combined)
+        run: |
+          git add .
+          git commit -m "Commit combined data changes before pull" || echo "No changes to commit"
+
       - name: Update local main (Combined)
         run: git pull --rebase origin main
 
@@ -112,7 +134,6 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
       - name: Commit and push changes (Combined CSV)
-        # Stelle sicher, dass combined.csv nicht in .gitignore steht oder nutze -f
         run: |
           git add 01_data/03_processed/combined.csv
           if git diff --cached --quiet; then
