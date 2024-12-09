@@ -31,12 +31,15 @@ jobs:
       - name: Fetch Data Hourly
         run: poetry run python src/01_fetch_data.py
 
-      # Vor dem Pull committen
       - name: Configure Git (Hourly pre-pull)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-      
+
+      # Debug: Zeige Git-Status vor dem Commit
+      - name: Debug Git Status (Hourly)
+        run: git status
+
       - name: Commit changes before pull (Hourly)
         run: |
           git add .
@@ -44,6 +47,10 @@ jobs:
 
       - name: Update local main
         run: git pull --rebase origin main
+
+      # Jetzt nachdem wir auf main aktualisiert haben, nochmal commit/push der relevanten Dateien
+      - name: Debug Git Status (Hourly after rebase)
+        run: git status
 
       - name: Commit and push changes (Hourly)
         run: |
@@ -79,11 +86,13 @@ jobs:
       - name: Combine Daily Data
         run: poetry run python src/03_combine_daily.py
 
-      # Vor dem Pull committen (Daily Combine)
       - name: Configure Git (Daily Combine pre-pull)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Debug Git Status (Daily Combine)
+        run: git status
 
       - name: Commit changes before pull (Daily Combine)
         run: |
@@ -92,6 +101,9 @@ jobs:
 
       - name: Update local main (Daily Combine)
         run: git pull --rebase origin main
+
+      - name: Debug Git Status (Daily Combine after rebase)
+        run: git status
 
       - name: Commit and push changes (Daily Combine)
         run: |
@@ -114,11 +126,13 @@ jobs:
       - name: Append to combined
         run: poetry run python src/04_append_to_combined.py ${{ env.DATE }}
 
-      # Vor dem nächsten Pull (Combined) committen
       - name: Configure Git (Combined pre-pull)
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Debug Git Status (Combined)
+        run: git status
 
       - name: Commit changes before pull (Combined)
         run: |
@@ -128,10 +142,8 @@ jobs:
       - name: Update local main (Combined)
         run: git pull --rebase origin main
 
-      - name: Configure Git (Combined)
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+      - name: Debug Git Status (Combined after rebase)
+        run: git status
 
       - name: Commit and push changes (Combined CSV)
         run: |
