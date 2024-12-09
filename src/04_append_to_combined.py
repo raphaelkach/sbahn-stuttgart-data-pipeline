@@ -6,9 +6,11 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INTERMEDIATE_DIR = os.path.join(BASE_DIR, '..', '01_data', '02_intermediate')
 PROCESSED_DIR = os.path.join(BASE_DIR, '..', '01_data', '03_processed')
 
+# Falls ein Datum als Argument übergeben wurde, nutze dieses.
 if len(sys.argv) > 1:
     date_str = sys.argv[1]
 else:
+    # Ansonsten das neueste '_cleaned.csv' File nehmen
     files = [f for f in os.listdir(INTERMEDIATE_DIR) if f.endswith('_cleaned.csv')]
     if not files:
         print("Keine bereinigte Tagesdatei gefunden.")
@@ -26,10 +28,14 @@ if not os.path.exists(input_file):
 
 new_data = pd.read_csv(input_file)
 
-if os.path.exists(output_file):
+# Überprüfe, ob combined.csv existiert und Daten enthält
+if os.path.exists(output_file) and os.path.getsize(output_file) > 0:
+    # combined.csv laden und neue Daten anhängen
     combined = pd.read_csv(output_file)
     combined = pd.concat([combined, new_data], ignore_index=True)
 else:
+    # combined.csv existiert nicht oder ist leer
+    # Starte neu mit new_data
     combined = new_data
 
 combined.drop_duplicates(inplace=True)
