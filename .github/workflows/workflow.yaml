@@ -117,6 +117,6 @@ jobs:
           commit_message: 'Tägliches Kombinieren und Bereinigen der Daten (direkt an combined angehängt)'
           file_pattern: |
             01_data/02_intermediate/*
-            01_data/03_processed/combined.csv
+            01_data/03_processed/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
