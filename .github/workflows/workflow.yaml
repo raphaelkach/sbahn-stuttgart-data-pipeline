@@ -111,12 +111,11 @@ jobs:
           poetry run python src/02_clean_data.py ${{ env.DATE }}
 
       # Änderungen committen und pushen (Daily)
+      # Anpassung: Jetzt werden alle CSV-Dateien berücksichtigt
       - name: Änderungen committen und pushen (Daily)
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           commit_message: 'Tägliches Kombinieren und Bereinigen der Daten (direkt an combined angehängt)'
-          file_pattern: |
-            01_data/02_intermediate/*
-            01_data/03_processed/*
+          file_pattern: '**/*.csv'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
