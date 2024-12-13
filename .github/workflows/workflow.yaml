@@ -2,8 +2,7 @@ name: DB Workflow
 
 on:
   schedule:
-    - cron: "0 * * * *"     # Stündlich fetch_hourly
-    - cron: "5 0 * * *"     # Täglich um 00:05 daily_combine_and_clean
+    - cron: "0 * * * *"  # stündlich
   workflow_dispatch:
 
 permissions:
@@ -21,7 +20,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.11'
-
+          
       - name: Cache für Poetry
         uses: actions/cache@v4
         with:
@@ -51,7 +50,6 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           poetry run python src/01_fetch_data.py
 
-      # Änderungen committen und pushen (Hourly)
       - name: Änderungen committen und pushen (Hourly)
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
@@ -69,53 +67,54 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Python 3.11 einrichten
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+      - name: Aktuellen Unix-Timestamp erfassen
+        id: current_time
+        run: echo "current_time=$(date +%s)" >> $GITHUB_OUTPUT
 
-      - name: Cache für Poetry
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/pypoetry
-            **/site-packages
-          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-poetry-
-
-      - name: Poetry installieren
+      - name: Letzten Laufzeitpunkt prüfen
+        id: check_last_run
         run: |
+          # Prüfe, ob bereits eine Datei mit einem Timestamp existiert
+          if [ -f ".last_run_timestamp" ]; then
+            last_time=$(cat .last_run_timestamp)
+            current_time=${{ steps.current_time.outputs.current_time }}
+            diff=$(( current_time - last_time ))
+            # 86400 Sekunden = 24 Stunden
+            if [ $diff -ge 86400 ]; then
+              echo "run_daily=true" >> $GITHUB_OUTPUT
+            else
+              echo "run_daily=false" >> $GITHUB_OUTPUT
+            fi
+          else
+            # Erste Ausführung, es gibt noch keinen Timestamp
+            echo "run_daily=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Tägliche Schritte nur ausführen, wenn 24h vorbei sind
+        if: ${{ steps.check_last_run.outputs.run_daily == 'true' }}
+        run: |
+          # Python und Poetry installieren
           curl -sSL https://install.python-poetry.org | python3 -
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry --version
-
-      - name: Abhängigkeiten installieren
-        run: |
           export PATH="$HOME/.local/bin:$PATH"
           poetry install --no-interaction --no-ansi
 
-      # Vortag bestimmen
-      - name: Gestern Datum bestimmen
-        run: echo "DATE=$(date -d 'yesterday' '+%y%m%d')" >> $GITHUB_ENV
+          # Datum für den Vortag bestimmen
+          DATE=$(date -d 'yesterday' '+%y%m%d')
 
-      - name: Tägliche Daten kombinieren
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry run python src/03_combine_daily.py ${{ env.DATE }}
+          # Tägliche Daten kombinieren
+          poetry run python src/03_combine_daily.py $DATE
 
-      # Direkt nach dem Kombinieren bereinigen und an combined anhängen
-      - name: Daten bereinigen und direkt an combined anhängen
-        run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry run python src/02_clean_data.py ${{ env.DATE }}
+          # Daten bereinigen
+          poetry run python src/02_clean_data.py $DATE
 
-      # Änderungen committen und pushen (Daily)
-      # Anpassung: Jetzt werden alle CSV-Dateien berücksichtigt
-      - name: Änderungen committen und pushen (Daily)
-        uses: stefanzweifel/git-auto-commit-action@v4
-        with:
-          commit_message: 'Tägliches Kombinieren und Bereinigen der Daten (direkt an combined angehängt)'
-          file_pattern: '**/*.csv'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Timestamp aktualisieren (aktuelle Zeit speichern)
+          echo "${{ steps.current_time.outputs.current_time }}" > .last_run_timestamp
+
+          # Änderungen committen und pushen
+          git add '**/*.csv' .last_run_timestamp
+          git commit -m "Tägliches Kombinieren und Bereinigen der Daten"
+          git push origin HEAD
+
+      - name: Überspringen ausgeben (optional)
+        if: ${{ steps.check_last_run.outputs.run_daily == 'false' }}
+        run: echo "Weniger als 24h seit letztem Lauf vergangen - Daily Job wird übersprungen."
