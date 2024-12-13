@@ -50,6 +50,11 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           poetry run python src/01_fetch_data.py
 
+      - name: Git konfigurieren (Hourly)
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
       - name: Änderungen committen und pushen (Hourly)
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
@@ -74,7 +79,6 @@ jobs:
       - name: Letzten Laufzeitpunkt prüfen
         id: check_last_run
         run: |
-          # Prüfe, ob bereits eine Datei mit einem Timestamp existiert
           if [ -f ".last_run_timestamp" ]; then
             last_time=$(cat .last_run_timestamp)
             current_time=${{ steps.current_time.outputs.current_time }}
@@ -86,11 +90,11 @@ jobs:
               echo "run_daily=false" >> $GITHUB_OUTPUT
             fi
           else
-            # Erste Ausführung, es gibt noch keinen Timestamp
+            # Erste Ausführung
             echo "run_daily=true" >> $GITHUB_OUTPUT
           fi
 
-      - name: Tägliche Schritte nur ausführen, wenn 24h vorbei sind
+      - name: Tägliche Schritte
         if: ${{ steps.check_last_run.outputs.run_daily == 'true' }}
         run: |
           # Python und Poetry installieren
@@ -98,22 +102,31 @@ jobs:
           export PATH="$HOME/.local/bin:$PATH"
           poetry install --no-interaction --no-ansi
 
-          # Datum für den Vortag bestimmen
           DATE=$(date -d 'yesterday' '+%y%m%d')
 
-          # Tägliche Daten kombinieren
+          # Daten kombinieren
           poetry run python src/03_combine_daily.py $DATE
 
           # Daten bereinigen
           poetry run python src/02_clean_data.py $DATE
 
-          # Timestamp aktualisieren (aktuelle Zeit speichern)
+          # Timestamp aktualisieren
           echo "${{ steps.current_time.outputs.current_time }}" > .last_run_timestamp
 
-          # Änderungen committen und pushen
-          git add '**/*.csv' .last_run_timestamp
-          git commit -m "Tägliches Kombinieren und Bereinigen der Daten"
-          git push origin HEAD
+      - name: Git konfigurieren (Daily)
+        if: ${{ steps.check_last_run.outputs.run_daily == 'true' }}
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Änderungen committen und pushen (Daily)
+        if: ${{ steps.check_last_run.outputs.run_daily == 'true' }}
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: 'Tägliches Kombinieren und Bereinigen der Daten'
+          file_pattern: '**/*.csv'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Überspringen ausgeben (optional)
         if: ${{ steps.check_last_run.outputs.run_daily == 'false' }}
