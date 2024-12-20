@@ -1,6 +1,9 @@
 name: DB Hourly Workflow
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "0 * * * *"  # stündlich
   workflow_dispatch:

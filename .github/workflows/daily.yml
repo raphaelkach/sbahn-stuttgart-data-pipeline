@@ -1,6 +1,9 @@
 name: DB Daily Workflow
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "0 0 * * *"  # täglich um Mitternacht
   workflow_dispatch:
