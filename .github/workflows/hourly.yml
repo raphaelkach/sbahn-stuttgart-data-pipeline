@@ -1,0 +1,65 @@
+name: DB Hourly Workflow
+
+on:
+  schedule:
+    - cron: "0 * * * *"  # stündlich
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch_hourly:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Python 3.11 einrichten
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          
+      - name: Cache für Poetry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            **/site-packages
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Poetry installieren
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry --version
+
+      - name: Abhängigkeiten installieren
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry install --no-interaction --no-ansi
+
+      - name: Stündliche Daten holen
+        env:
+          DB_CLIENT_ID: ${{ secrets.DB_CLIENT_ID }}
+          DB_API_KEY: ${{ secrets.DB_API_KEY }}
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry run python src/01_fetch_data.py
+
+      - name: Git konfigurieren (Hourly)
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Änderungen committen und pushen (Hourly)
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: 'Stündliches Update der Daten'
+          file_pattern: |
+            01_data/01_raw/API/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

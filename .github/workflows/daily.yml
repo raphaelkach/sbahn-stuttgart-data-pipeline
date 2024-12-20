@@ -1,0 +1,59 @@
+name: DB Daily Workflow
+
+on:
+  schedule:
+    - cron: "0 0 * * *"  # täglich um Mitternacht
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  daily_combine_and_clean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Python 3.11 einrichten
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Cache für Poetry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pypoetry
+            **/site-packages
+          key: ${{ runner.os }}-poetry-${{ hashFiles('**/poetry.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-poetry-
+
+      - name: Poetry installieren
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          export PATH="$HOME/.local/bin:$PATH"
+          poetry --version
+          poetry install --no-interaction --no-ansi
+
+      - name: Daten kombinieren & bereinigen
+        run: |
+          export PATH="$HOME/.local/bin:$PATH"
+          DATE=$(date -d 'yesterday' '+%y%m%d')
+          poetry run python src/03_combine_daily.py $DATE
+          poetry run python src/02_clean_data.py $DATE
+
+      - name: Git konfigurieren (Daily)
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Änderungen committen und pushen (Daily)
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: 'Tägliches Kombinieren und Bereinigen der Daten'
+          file_pattern: '**/*.csv'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
