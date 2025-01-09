@@ -19,7 +19,6 @@ fiona = "^1.10.1"
 pyproj = "^3.7.0"
 folium = "^0.19.2"
 
-
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
