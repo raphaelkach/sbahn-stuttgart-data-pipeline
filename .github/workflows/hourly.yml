@@ -42,8 +42,9 @@ jobs:
 
       - name: Abhängigkeiten installieren
         run: |
-          export PATH="$HOME/.local/bin:$PATH"
-          poetry install --no-interaction --no-ansi
+            export PATH="$HOME/.local/bin:$PATH"
+            poetry install --no-interaction --no-ansi --no-root
+        
 
       - name: Stündliche Daten holen
         env:
