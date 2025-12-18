@@ -18,6 +18,7 @@ shapely = "^2.0.6"
 fiona = "^1.10.1"
 pyproj = "^3.7.0"
 folium = "^0.19.2"
+setuptools = "^80.9.0"
 
 [build-system]
 requires = ["poetry-core"]
