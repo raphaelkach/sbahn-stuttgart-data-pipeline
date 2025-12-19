@@ -678,7 +678,49 @@ def get_bottlenecks(limit: int = 20):
         LIMIT {limit}
         """
         df = con.execute(query).fetchdf()
-        return df.to_dict(orient="records")
+        
+        # Enhance with hourly data and punctuality for each station
+        enhanced_results = []
+        for _, row in df.iterrows():
+            station = row['station_name']
+            
+            # Hourly trend for sparkline
+            hourly_query = f"""
+            SELECT 
+                CAST(strftime(planned_arrival, '%H') AS INTEGER) as hour,
+                AVG(arrival_delay_m) as avg_delay
+            FROM sbahn
+            WHERE station_name = '{station}' AND planned_arrival IS NOT NULL
+            GROUP BY 1
+            """
+            hourly_df = con.execute(hourly_query).fetchdf()
+            hourly_data = [0.0] * 24
+            for _, h_row in hourly_df.iterrows():
+                h = int(h_row['hour'])
+                if 0 <= h < 24:
+                    hourly_data[h] = round(h_row['avg_delay'], 2)
+            
+            # Punctuality
+            punctuality_query = f"""
+            SELECT (COUNT(CASE WHEN arrival_delay_m <= 0 THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0)) as val
+            FROM sbahn
+            WHERE station_name = '{station}' AND arrival_delay_m IS NOT NULL
+            """
+            punct_res = con.execute(punctuality_query).fetchone()
+            punctuality = round(punct_res[0], 1) if punct_res and punct_res[0] is not None else 0
+            
+            enhanced_results.append({
+                "station_name": station,
+                "total_trains": int(row['total_trains']),
+                "avg_delay": round(row['avg_delay'], 2) if row['avg_delay'] else 0,
+                "max_delay": int(row['max_delay']) if row['max_delay'] else 0,
+                "cancelled": int(row['cancelled']),
+                "pain_score": round(row['pain_score'], 1) if row['pain_score'] else 0,
+                "punctuality": punctuality,
+                "hourly_delays": hourly_data
+            })
+
+        return enhanced_results
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
