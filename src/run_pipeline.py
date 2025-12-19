@@ -51,11 +51,7 @@ def main():
         logging.error("Pipeline aborted due to failure in 03_combine_daily.py")
         sys.exit(1)
         
-    # 2. Clean data
-    if not run_script('02_clean_data.py'):
-        logging.error("Pipeline aborted due to failure in 02_clean_data.py")
-        sys.exit(1)
-        
+
     logging.info("Pipeline execution finished successfully.")
 
 if __name__ == "__main__":
