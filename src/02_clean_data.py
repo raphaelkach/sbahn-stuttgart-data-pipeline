@@ -139,6 +139,8 @@ combined.drop_duplicates(inplace=True)
 
 # Kombinierte Datei speichern
 os.makedirs(PROCESSED_DIR, exist_ok=True)
-combined_file = os.path.join(PROCESSED_DIR, 'combined.csv')
-combined.to_csv(combined_file, index=False)
-print(f"Daten aus allen Dateien wurden nach dem Cleaning in {combined_file} zusammengeführt.")
+combined_file_parquet = os.path.join(PROCESSED_DIR, 'combined.parquet')
+combined.to_parquet(combined_file_parquet, index=False)
+combined_file_csv = os.path.join(PROCESSED_DIR, 'combined.csv')
+combined.to_csv(combined_file_csv, index=False)
+print(f"Daten aus allen Dateien wurden nach dem Cleaning in {combined_file_parquet} (und .csv) zusammengeführt.")
